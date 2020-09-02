@@ -3,6 +3,7 @@ from astropy.constants import k_B
 from astropy.units import Kelvin, cm, spectral
 from numpy.ma import fix_invalid
 from matplotlib.pyplot import plot, show
+import numpy as np
 
 class Atom:
     """
@@ -53,6 +54,12 @@ class Atom:
         # Save level energies relative to ground level in each stage
         self.chi = chi - self.chi_ion[:, newaxis]
         self.loaded = True
+
+    def compute_partition_function(self, temperature):
+        if not self.loaded:
+            raise ValueError("Missing atom structure, please load atom with read_atim()")
+        temp = temperature[np.newaxis, np.newaxis]
+        return np.nansum(self.g[..., np.newaxis]*np.exp(-self.chi[..., np.newaxis]/(k_B*temp)),axis=1)    
     
     def cal_partition(self, T):
         """
@@ -64,22 +71,15 @@ class Atom:
         T: float or int
             Temperature of medium around atom
         """
-        g = where(~isnan(self.g), self.g, 0)
-        chi = where(~isnan(self.chi), self.chi, 0)
-        self.U_r = sum(g * exp(- chi / (k_B * T)), 0)
+        self.U_r = np.nansum(self.g[..., np.newaxis] * exp(- self.chi[..., np.newaxis] / (k_B * T)), 1)
 
 if __name__ == "__main__":
-    Kalsium = Atom(atomfile = "Ca_atom.txt")
-    Kalsium.cal_partition(5000 * Kelvin)
-    plot(Kalsium.U_r)
-    print(Kalsium.U_r)
-    print("---------------------------------------------------------")
-    Kalsium.cal_partition(10000 * Kelvin)
-    plot(Kalsium.U_r)
-    print(Kalsium.U_r)
-    print("---------------------------------------------------------")
-    Kalsium.cal_partition(20000 * Kelvin)
-    plot(Kalsium.U_r)
-    print(Kalsium.U_r)
-    
-    show()
+    #Kalsium = Atom(atomfile = "Ca_atom.txt")
+    temp = np.linspace(100, 175000, 10) * Kelvin
+    #Kalsium.cal_partition(temp)
+    #print(Kalsium.U_r)
+    #print("---------------------------------------------------------")
+    #print(Kalsium.compute_partition_function(temp))
+    print(temp)
+    print(temp[:, np.newaxis])
+    print(temp[..., np.newaxis])
